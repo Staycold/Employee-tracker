@@ -1,6 +1,6 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql');
-const query = connection.query
+
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -18,14 +18,18 @@ const connection = mysql.createConnection({
 
 const afterConnection = () => {
 
-    connection.query('SELECT * FROM employee', (err, res) => {
+    connection.query((err, res) => {
         if (err) throw err;
 
-        addaWorker();
+        initialQuestion();
+
+        // 'SELECT * FROM employee', 
+
+        // addEmployee();
 
         console.table(res);
 
-        connection.end();
+        // connection.end();
     });
 };
 
@@ -37,18 +41,12 @@ connection.connect((err) => {
 
 
 
-const addaWorker = () => {
+const addEmployee = () => {
 
 
     return inquirer.prompt([
 
-        {
-            type: 'list',
-            message: 'please choose',
-            name: 'init',
-            choices: ['Add', 'View', 'Update']
-            // make this the FIRST question. make switch case after.
-        },
+      
         {
             type: 'input',
             message: `What is the employee's name ?`,
@@ -107,6 +105,17 @@ const addaWorker = () => {
 
 
 const updateEmployee = () => {
+
+    return inquirer.prompt([
+        {
+            type: 'list',
+            message: 'What employee do you want to update? ',
+            name: 'update',
+            choices: ['SELECT * FROM employeedb.employee;'],
+            when: (input) => input.init == "Add"
+        }
+    ])
+
  query('update * FROM employeedb.employee WHERE id =?',
  [answers.id]
 
@@ -132,3 +141,41 @@ const fireEmployee = () => {
         console.table(res)
     }
    };
+
+
+   initialQuestion = () => {
+       inquirer.prompt([
+        {
+            type: 'list',
+            message: 'please choose',
+            name: 'init',
+            choices: ['Add', 'View', 'Update','Fire']
+            // make this the FIRST question. make switch case after.
+        }
+       ])
+       .then(initialAnswer => {
+           console.log(initialAnswer)
+           switch (initialAnswer){
+               case 'Add':
+                   return addEmployee();
+               case 'View':
+                   return viewEmployee();
+               case 'Update':
+                   return updateEmployee();
+               case 'Fire':
+                   return fireEmployee();
+               default:
+                   return "";
+           }
+           
+       })
+   }
+
+   inquirer.prompt([
+       {
+           name:'addWhat',
+           message:'What would you Like to add?',
+           type:"list",
+           choices:['Employee','Role','Department','Manager']
+       }
+   ])
