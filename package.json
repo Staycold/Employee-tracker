@@ -19,6 +19,7 @@
   "homepage": "https://github.com/Staycold/Employee-tracker#readme",
   "dependencies": {
     "inquirer": "^8.1.1",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "util": "^0.12.4"
   }
 }
