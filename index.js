@@ -1,181 +1,273 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql');
-
+const util = require('util')
 
 const connection = mysql.createConnection({
     host: 'localhost',
 
-    // Your port; if not 3306
+
     port: 3306,
 
-    // Your username
+
     user: 'root',
 
-    // Be sure to update with your own MySQL password!
+
     password: '',
     database: 'employeedb',
 });
+connection.query = util.promisify(connection.query)
 
-const afterConnection = () => {
 
-    connection.query((err, res) => {
+const viewRoles = () => {
+    connection.query('SELECT * FROM employeedb.role', (err, res) => {
         if (err) throw err;
-
-        initialQuestion();
-
-        // 'SELECT * FROM employee', 
-
-        // addEmployee();
-
         console.table(res);
+        initQuestion();
 
-        // connection.end();
     });
-};
+}
 
-connection.connect((err) => {
-    if (err) throw err;
-    console.log(`connected as id ${connection.threadId}`);
-    afterConnection();
-})
+const viewDepartments = () => {
+    connection.query('SELECT * FROM employeedb.department', (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        initQuestion();
+
+    });
+}
 
 
+const viewEmployee = () => {
+    connection.query('SELECT * FROM employeedb.employee', (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        initQuestion();
 
-const addEmployee = () => {
+    });
 
 
-    return inquirer.prompt([
+}
 
-      
+const initQuestion = () => {
+    inquirer.prompt([
+        {
+            type: 'list',
+            message: 'please choose',
+            name: 'init',
+            choices: ['Add', 'View', 'Update', 'Leave']
+            // make this the FIRST question. make switch case after.
+        }
+    ]).then(initialAnswer => {
+        console.log(initialAnswer)
+        switch (initialAnswer.init) {
+            case 'Add':
+                return add();
+            case 'View':
+                return view();
+            case 'Update':
+                return updateEmployeesRole();
+            case 'Leave':
+                return connection.end();
+            default:
+                return "";
+        }
+    })
+}
+// this is the overall add function, where you choose what you want to add, to which table.
+const add = () => {
+    inquirer.prompt([
+        {
+            type: "list",
+            message: "What would you like to add?",
+            name: "add",
+            choices: ["Employee", "Role", "Department"]
+        }
+    ]).then(addResponse => {
+        console.log(addResponse)
+        switch (addResponse.add) {
+            case 'Employee':
+                return addEmployee();
+            case 'Department':
+                return addDepartment();
+            case 'Role':
+                return addRole();
+
+            default:
+                return "";
+        }
+    })
+}
+
+
+// this is the overal view function, where you choose which table you would like to view.
+const view = () => {
+
+    inquirer.prompt([
+        {
+            type: 'list',
+            message: `What would you like to view?`,
+            name: 'view',
+            choices: ['Employee', 'Departments', 'Roles', 'Managers'],
+
+        }
+    ]).then(viewAnswer => {
+        console.log(viewAnswer)
+        switch (viewAnswer.view) {
+            case 'Employee':
+                return viewEmployee();
+            case 'Departments':
+                return viewDepartments();
+            case 'Roles':
+                return viewRoles();
+            // case 'Managers':
+            //     return viewManagers();
+            default:
+                return "";
+        }
+    })
+
+}
+
+const addDepartment = async () => {
+
+    const getDepartmentAnswers = await inquirer.prompt([
         {
             type: 'input',
-            message: `What is the employee's name ?`,
-            name: 'name',
-            when: (input) => input.init == "Add"
+            message: `What is the department name?`,
+            name: 'depName',
+
+        }
+    ])
+    await connection.query('INSERT INTO department SET ?',
+        {
+            name: `${getDepartmentAnswers.depName}`,
+
+        });
+
+    initQuestion();
+
+};
+
+const addRole = async () => {
+
+    const getRoleanswers = await inquirer.prompt([
+        {
+            type: 'input',
+            message: `What is the role name?`,
+            name: 'roleTitle',
+
+        },
+        {
+            type: 'input',
+            message: `What is the salary for this role?`,
+            name: 'roleSalary',
+
+        },
+    ])
+    await connection.query('INSERT INTO role SET ?',
+        {
+            title: `${getRoleanswers.roleTitle}`,
+            salary: `${getRoleanswers.roleSalary}`,
+
+        });
+
+    initQuestion();
+
+};
+
+
+const addEmployee = async () => {
+    const res = await connection.query('Select * from role')
+
+
+    const roleChoices = res.map(({ title, id }) => {
+        return ({
+            name: title,
+            value: id
+        })
+    })
+    //make a function to getDepartment
+    const addAnswers = await inquirer.prompt([
+
+        {
+            type: 'input',
+            message: `What is the employee's first name`,
+            name: 'firstname',
+
         },
         {
             type: 'input',
             message: `What is the employee's last name`,
             name: 'lastname',
-            when: (input) => input.init == "Add"
-        },
-        {
-            type: 'input',
-            message: 'What is the salary of the employee?',
-            name: 'salary',
-            when: (input) => input.init == "Add"
-        },
-        {
-            type: 'input',
-            message: 'What is the department? ',
-            name: 'department',
-            
-
-            when: (input) => input.init == "Add"
 
         },
         {
             type: 'list',
             message: 'What is their role? ',
             name: 'role_id',
-            choices: ['Quotician', 'Sales', 'HR','Accounting'],
-            when: (input) => input.init == "Add"
+            choices: roleChoices,
+
 
         }
+
+
     ])
 
-        .then(employeeAnswers => {
-          
-            'INSERT INTO employee SET ?',
-            {
-                first_name: `${answer.first_name}`,
-                last_name: `${answer.last_name}`,
-                role_id: `${answer.role_id}`,
-                manager_id: `${answer.manager_id}`
-            }
+    await connection.query('INSERT INTO employee SET ?',
+        {
+            first_name: `${addAnswers.firstname}`,
+            last_name: `${addAnswers.lastname}`,
+            role_id: `${addAnswers.role_id}`,
+        });
+
+    initQuestion();
+
+};
 
 
+
+const updateEmployeesRole = async () => {
+    const uER = await connection.query('SELECT * FROM employee')
+
+    const uERChoicess = uER.map(({ first_name, last_name, id }) => {
+
+        return ({
+            name: `${first_name} ${last_name}`,
+            value: id
         })
-
-};
-
-// const viewEmployees = () => {
-    
-// }
-
-
-const updateEmployee = () => {
-
-    return inquirer.prompt([
+    })
+    const uERAnswers = await inquirer.prompt([
         {
             type: 'list',
-            message: 'What employee do you want to update? ',
-            name: 'update',
-            choices: ['SELECT * FROM employeedb.employee;'],
-            when: (input) => input.init == "Add"
+            message: "Which emplpoyee would you like to update?",
+            name: 'empNewRole',
+            choices: uERChoicess
         }
     ])
 
- query('update * FROM employeedb.employee WHERE id =?',
- [answers.id]
 
+    const getRole = await connection.query('Select * from role')
 
- );
-
- (err, res) => {
-     if (err) throw err;
-     console.table(res)
- }
-};
-
-
-const fireEmployee = () => {
-    query('delete * FROM employeedb.employee WHERE id =?',
-    [answers.id]
-   
-   
-    );
-   
-    (err, res) => {
-        if (err) throw err;
-        console.table(res)
-    }
-   };
-
-
-   initialQuestion = () => {
-       inquirer.prompt([
+    const newRoleChoices = getRole.map(({ title, id },) => {
+        return ({
+            name: title,
+            value: id
+        })
+    })
+    const newRoleAnswers = await inquirer.prompt([
         {
             type: 'list',
-            message: 'please choose',
-            name: 'init',
-            choices: ['Add', 'View', 'Update','Fire']
-            // make this the FIRST question. make switch case after.
+            message: 'What role would you like to assign them?',
+            name: 'updatedRole',
+            choices: newRoleChoices
         }
-       ])
-       .then(initialAnswer => {
-           console.log(initialAnswer)
-           switch (initialAnswer){
-               case 'Add':
-                   return addEmployee();
-               case 'View':
-                   return viewEmployee();
-               case 'Update':
-                   return updateEmployee();
-               case 'Fire':
-                   return fireEmployee();
-               default:
-                   return "";
-           }
-           
-       })
-   }
+    ])
 
-   inquirer.prompt([
-       {
-           name:'addWhat',
-           message:'What would you Like to add?',
-           type:"list",
-           choices:['Employee','Role','Department','Manager']
-       }
-   ])
+    await connection.query('UPDATE employee SET role_id =? WHERE id=?', [newRoleAnswers.updatedRole, uERAnswers.empNewRole])
+
+
+    initQuestion();
+}
+// this will start the appllication. 
+
+initQuestion();

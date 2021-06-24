@@ -289,14 +289,14 @@ const addEmployee =async () => {
 
 
 
-const updateEmployeesRole = async() =>{
+const updateEmployeesRole = async() => {
 const uER = await connection.query('SELECT * FROM employee')
-
-const uERChoicess= uER.map(({first_name, last_name, role_id }) => {
+//[sql Object,sqlobject]
+const uERChoicess= uER.map(({ first_name, last_name, id }) => {
+    //const {firstname, lastname, id}
     return ({
-        name:first_name,
-        name2:last_name,
-        role:role_id
+        name:`${first_name} ${last_name}`,
+        value:id
     })
 })
 const uERAnswers =await inquirer.prompt([
@@ -306,12 +306,12 @@ const uERAnswers =await inquirer.prompt([
         name:'empNewRole',
         choices: uERChoicess
     }
-]).then(updatedAnswer)
+])
 
 
 const getRole= await connection.query('Select * from role')
 
-    const newRoleChoices = res.map(({title,id})=> {
+    const newRoleChoices = getRole.map(({title,id},)=> {
         return ({
             name:title,
             value:id
@@ -325,11 +325,20 @@ const getRole= await connection.query('Select * from role')
             choices:newRoleChoices
         }
     ])
-    await connection.query('UPDATE employee SET role_id =? WHERE id=?'),
-    [newRoleChoices.updatedRole,uERAnswer.empNewRole]
+    // console.log(`uERChoices = ${uERChoicess},
+    //  uERAnswers = ${uERAnswers},
+    // newRoleChoices = ${newRoleChoices},
+    // newRoleAnswers = ${newRoleAnswers}.`)
+    // console.log(JSON.stringify(newRoleAnswers))
+     
+
+    await connection.query('UPDATE employee SET role_id =? WHERE id=?', [newRoleAnswers.updatedRole, uERAnswers.empNewRole])
+   
+
+    initQuestion();
 }
 
-
+// JSON
 
 
 // const updateManager
