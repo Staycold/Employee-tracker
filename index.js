@@ -22,10 +22,40 @@ const viewRoles = () => {
     connection.query('SELECT * FROM employeedb.role', (err, res) => {
         if (err) throw err;
         console.table(res);
+
+        
         initQuestion();
 
     });
 }
+
+const viewEmployeebyRole = async() =>{
+        const getRole= await connection.query('Select * from role')
+    
+        const roleAnswers = getRole.map(({title,id})=> {
+            return ({
+                name:title,
+                value:id
+            })
+        })
+        const getRoleAnswers =await inquirer.prompt([
+            {
+                type: 'list',
+                message: `What role would you like to see?`,
+                name: 'empbyRoles',
+                choices: roleAnswers
+            },
+            
+    ])
+          const viewbyRoles =   await connection.query(`SELECT * FROM employee, role WHERE employee.role_id=role.id AND employee.role_id=?`, [(getRoleAnswers.empbyRoles)]
+                        );
+  
+    console.table(viewbyRoles)
+
+            initQuestion();     
+    
+    };
+
 
 const viewDepartments = () => {
     connection.query('SELECT * FROM employeedb.department', (err, res) => {
@@ -36,9 +66,49 @@ const viewDepartments = () => {
     });
 }
 
+const viewEmployeebyDepartment = async() => {
+    const getDepartments = await connection.query('SELECT * FROM department')
 
-const viewEmployee = () => {
-    connection.query('SELECT * FROM employeedb.employee', (err, res) => {
+    const theDepartments = getDepartments.map(({name, id }) => {
+
+        return ({
+            name: `${name}`,
+            value: id
+        })
+    })
+    const departmentAnswersforReal = await inquirer.prompt([
+        {
+            type: 'list',
+            message: "Which department would you like to view?",
+            name: 'viewDept',
+            choices: theDepartments
+        }
+    ])
+    console.log(departmentAnswersforReal)
+    // connection.query('SELECT * FROM employeedb.department ', (err, res) => {
+    //     let getEmpDepartmets 
+    //     if (err) throw err;
+    //     console.table(res);
+    //     initQuestion();
+    viewEmployee(departmentAnswersforReal.viewDept);
+
+    // });
+}
+
+
+
+const viewEmployee = (dept_id) => {
+    // let myQuery = `SELECT person.first_name, person.last_name FROM employee AS person, role, employee AS manager WHERE person.role_id=role.id AND person.manager_id=manager.id;`;
+    let myQuery = `SELECT employeeRole.first_name, employeeRole.last_name, employeeRole.title, employeeRole.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager_name, employeeRole.department_id FROM (select employee.first_name, employee.last_name, role.title, role.salary, employee.manager_id, role.department_id from employee 
+        LEFT JOIN role on employee.role_id= role.id) AS employeeRole LEFT JOIN employee AS manager  on employeeRole.manager_id = manager.id;`;
+
+    if(dept_id) {
+        myQuery = `SELECT employeeRole.first_name, employeeRole.last_name, employeeRole.title, employeeRole.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager_name, employeeRole.department_id FROM (select employee.first_name, employee.last_name, role.title, role.salary, employee.manager_id, role.department_id from employee 
+            LEFT JOIN role on employee.role_id= role.id) AS employeeRole LEFT JOIN employee AS manager  on employeeRole.manager_id = manager.id WHERE department_id=${dept_id};`
+    }
+
+
+    connection.query(myQuery, (err, res) => {
         if (err) throw err;
         console.table(res);
         initQuestion();
@@ -116,9 +186,10 @@ const view = () => {
             case 'Employee':
                 return viewEmployee();
             case 'Departments':
-                return viewDepartments();
+                // return viewDepartments();
+                return viewEmployeebyDepartment();
             case 'Roles':
-                return viewRoles();
+                return viewEmployeebyRole();
             // case 'Managers':
             //     return viewManagers();
             default:
@@ -186,6 +257,16 @@ const addEmployee = async () => {
             value: id
         })
     })
+
+    const res2 = await connection.query('Select * from employee')
+
+
+    const managerChoices = res2.map(({ first_name, last_name, id }) => {
+        return ({
+            name: first_name + ' ' + last_name,
+            value: id
+        })
+    })
     //make a function to getDepartment
     const addAnswers = await inquirer.prompt([
 
@@ -208,6 +289,14 @@ const addEmployee = async () => {
             choices: roleChoices,
 
 
+        },
+        {
+            type: 'list',
+            message: 'Wo is their manager? ',
+            name: 'manager_id',
+            choices: managerChoices,
+
+
         }
 
 
@@ -218,6 +307,7 @@ const addEmployee = async () => {
             first_name: `${addAnswers.firstname}`,
             last_name: `${addAnswers.lastname}`,
             role_id: `${addAnswers.role_id}`,
+            manager_id:addAnswers.manager_id
         });
 
     initQuestion();
